@@ -1,0 +1,339 @@
+{
+  "name": "WWII RAG Scholar",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "https://en.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=true&titles=World_War_II&format=json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -16,
+        96
+      ],
+      "id": "4c908fc4-bb27-47df-a785-180bd5352220",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "wwii-knowledge",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        400,
+        96
+      ],
+      "id": "da1a76f1-0129-470a-b60c-69a03d37398c",
+      "name": "Pinecone Vector Store",
+      "notesInFlow": false,
+      "credentials": {
+        "pineconeApi": {
+          "id": "IUgylDdyhyzLFiwF",
+          "name": "PineconeApi account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        304,
+        288
+      ],
+      "id": "cdd362bb-b067-4ca7-a97d-db1fcf641845",
+      "name": "Embeddings Google Gemini",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Leh7u6YonbNmX69Z",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        416,
+        -160
+      ],
+      "id": "95addbdf-eac4-4d09-8bc8-ec1d8fb173e6",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Leh7u6YonbNmX69Z",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        768,
+        -32
+      ],
+      "id": "abc68f3f-4d99-4e29-9c78-6f01f9c8ba5a",
+      "name": "Embeddings Google Gemini1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Leh7u6YonbNmX69Z",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "public": true,
+        "initialMessages": "Hi there! 👋",
+        "options": {
+          "responseMode": "responseNodes"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        208,
+        -384
+      ],
+      "id": "1cac267d-8cb3-422f-a43b-f946b2aa4bbd",
+      "name": "When chat message received",
+      "webhookId": "49f3d99e-e0b2-46c3-97f8-00c1c44fb33f"
+    },
+    {
+      "parameters": {
+        "message": "={{ $json.output }}",
+        "waitUserReply": false,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chat",
+      "typeVersion": 1,
+      "position": [
+        816,
+        -384
+      ],
+      "id": "0720c5e3-a2bc-4b1c-b990-94b9f156028e",
+      "name": "Respond to Chat"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        496,
+        288
+      ],
+      "id": "07baa5bd-99ba-4f87-8f3b-4c45e74d5b59",
+      "name": "Default Data Loader"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst item = items[0].json;\nconst text = item.query.pages['32927'].extract;\n\nfunction estimateTokens(text) {\n    return Math.ceil(text.length / 4);\n}\n\nconst chunks = [];\nlet currentChunk = \"\";\nlet currentTokens = 0;\n\nconst sentences = text.split(/[.!?]+/);\n\nfor (const sentence of sentences) {\n    const sentenceTokens = estimateTokens(sentence);\n    \n    if (currentTokens + sentenceTokens > 1500 && currentChunk) {\n        chunks.push({\n            pageContent: currentChunk.trim(),\n            metadata: { chunk_id: chunks.length + 1, approx_tokens: currentTokens }\n        });\n        currentChunk = sentence;\n        currentTokens = sentenceTokens;\n    } else {\n        currentChunk += (currentChunk ? \" \" : \"\") + sentence;\n        currentTokens += sentenceTokens;\n    }\n}\n\nif (currentChunk) {\n    chunks.push({\n        pageContent: currentChunk.trim(),\n        metadata: { chunk_id: chunks.length + 1, approx_tokens: currentTokens }\n    });\n}\n\nreturn chunks.map(chunk => ({ json: chunk }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        96
+      ],
+      "id": "1a66b4b7-79cc-49b8-be05-74a5f5d9dab3",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are a helpful assistant who responds politely and humanely in summary to any topic related to World War II. politely reject any other topics.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        416,
+        -384
+      ],
+      "id": "8f8f51af-f63c-4a39-a306-94d8a93dba4a",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Work with your data from Pinecone vector store.",
+        "pineconeIndex": {
+          "__rl": true,
+          "mode": "id",
+          "value": "wwii-knowledge"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        640,
+        -192
+      ],
+      "id": "509eeda0-f5cb-459d-af5c-a9d88dd38b4b",
+      "name": "Pinecone Vector Store1",
+      "credentials": {
+        "pineconeApi": {
+          "id": "IUgylDdyhyzLFiwF",
+          "name": "PineconeApi account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        512,
+        -160
+      ],
+      "id": "6a87d691-0bc1-4cc7-8a7a-f029694a93fd",
+      "name": "Simple Memory"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Vector Store1",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone Vector Store": {
+      "main": [
+        []
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Respond to Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone Vector Store1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "9d733873-f659-4271-9059-ac5744b02e7e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b58529d228558a247a2da45a7f3f9dc307d41d9afd7ac7f32cd4348c446234d1"
+  },
+  "id": "lEeyOwDGlL3mVg7g",
+  "tags": []
+}
