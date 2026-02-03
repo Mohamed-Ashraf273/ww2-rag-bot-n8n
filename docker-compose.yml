@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  n8n:
+    image: mohamedashraf273/ww2-rag-bot:latest
+    container_name: ww2-rag-bot
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    environment:
+      - DB_SQLITE_POOL_SIZE=5
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+    restart: unless-stopped
+
+volumes:
+  n8n_data:
+    external: true

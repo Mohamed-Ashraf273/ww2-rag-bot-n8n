@@ -15,11 +15,28 @@ A RAG (Retrieval-Augmented Generation) chatbot powered by n8n that answers quest
 ### Pull and Run (Recommended)
 
 ```bash
+# Pull the image
 docker pull mohamedashraf273/ww2-rag-bot:latest
-docker run -it --rm -p 5678:5678 mohamedashraf273/ww2-rag-bot:latest
+
+# Create a volume for data persistence
+docker volume create n8n_data
+
+# Run with persistent data
+docker run -it --rm \
+  -p 5678:5678 \
+  -v n8n_data:/home/node/.n8n \
+  mohamedashraf273/ww2-rag-bot:latest
+```
+
+**Or use Docker Compose:**
+
+```bash
+docker-compose up
 ```
 
 Then open your browser at `http://localhost:5678`
+
+> **Note:** The `-v n8n_data:/home/node/.n8n` flag ensures all your workflows, credentials, and settings persist between container restarts.
 
 ### Build and Run Locally
 
